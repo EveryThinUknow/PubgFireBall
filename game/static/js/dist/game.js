@@ -139,6 +139,48 @@ class TheGameMap extends PubgGameObject{
 
 
 }
+class Particle extends PubgGameObject {
+    constructor(playground, x, y, radius, vx, vy, color, speed, move_length) {
+        super();
+        this.playground = playground;
+        this.ctx = this.playground.game_map.ctx;
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.vx = vx;
+        this.vy = vy;
+        this.color = color;
+        this.speed = speed;
+        this.friction = 0.9;
+        this.move_length = move_length;
+        this.eps = 1;
+    }
+
+    start(){
+    }
+
+    update(){
+        if (this.move_length < this.eps || this.speed < this.eps) {
+            this.destroy();
+            return false;
+        }
+        //最后一帧的移动距离不一定大于▲t时间内移动的量，这时候以剩余值为最后帧数的移动长
+        let moved = Math.min(this.move_length, this.speed * this.timedelta / 1000);
+        this.x += this.vx * moved;
+        this.y += this.vy * moved;
+        this.speed *= this.friction;
+        this.move_length -= moved;
+        this.render();
+    }
+
+    render(){
+        this.ctx.beginPath();
+        this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+        this.ctx.fillStyle = this.color;
+        this.ctx.fill();
+    }
+}
+
 class Player extends PubgGameObject {
     constructor(playground, x, y, radius, color, speed, is_me){
         super();
@@ -148,19 +190,30 @@ class Player extends PubgGameObject {
         this.y = y;
         this.vx = 0;
         this.vy = 0;
+        //受到伤害时速度会变化
+        this.damage_x = 0;
+        this.damage_y = 0;
+        this.damage_speed = 0;
+        this.friction = 0.9; //摩擦力
+        /////
         this.move_length = 0;
         this.radius = radius
         this.color = color;
         this.speed = speed;
         this.is_me = is_me;
         this.eps = 0.1;
-        
+        this.spent_time = 0;
+
         this.cur_skill = null;
     }
 
     start() {
         if (this.is_me){
             this.add_listening_events();
+        } else {
+            let tx = Math.random() * this.playground.width;
+            let ty = Math.random() * this.playground.height;
+            this.move_to(tx, ty);
         }
     }
 
@@ -206,8 +259,9 @@ class Player extends PubgGameObject {
         let vy = Math.sin(angle);
         let color = "orange";
         let speed = this.playground.height * 0.35;
-        let move_length = this.playground.height * 1.5;
-        new FireBall(this.playground, this, x, y, radius, vx, vy, color, speed, move_length);
+        let move_length = this.playground.height * 1; //射程
+        let damage = this.playground.height * 0.01; //球半径是h*0.05，攻击一次球变小
+        new FireBall(this.playground, this, x, y, radius, vx, vy, color, speed, move_length, damage);
 
     }
     //求两点间的距离
@@ -216,7 +270,7 @@ class Player extends PubgGameObject {
         let dy = y1 - y2;
         return Math.sqrt(dx * dx + dy * dy);
     }
-    
+
     //球体的移动位置
     move_to(tx, ty) {
         this.move_length = this.get_dist(this.x, this.y, tx, ty);
@@ -226,20 +280,65 @@ class Player extends PubgGameObject {
         console.log("move to", tx, ty);
     }
 
-
+    //player的球体被击中
+    is_attacked(angle, damage) {
+        this.radius -= damage;//被攻击后球变小
+        //释放烟花particle
+        for (let i = 0; i < 20 + Math.random() * 5; i ++) {
+             let x = this.x, y = this.y;
+             let radius = this.radius * Math.random() * 0.1; //烟花球是该球半径十分之一大小的0-1倍
+             let angle = Math.PI * 2 * Math.random();//轨迹随机角度释放
+             let vx = Math.cos(angle), vy = Math.sin(angle);
+             let color = this.color;
+             let speed = this.speed * 8;
+             let move_length = this.radius * Math.random() * 5;
+             new Particle (this.playground, x, y, radius, vx, vy, color, speed, move_length);
+         }
+        //当球的半径小于10像素时
+        if (this.radius < 10) {
+            this.destroy();
+            return false;
+        }
+        this.damage_x = Math.cos(angle);
+        this.damage_y = Math.sin(angle);
+        this.damage_speed = damage * 200;
+        this.speed *= 0.9;
+    }
 
 
     //////////////////////////////////
     update() {
-        if (this.move_length < this.eps) {
-            this.move_length = 0;
+        this.spent_time += this.timedelta / 1000;//冷静期，经过一定时间后，spent_time大于该时间，才能发射小球，不然一开始玩家就死了
+        //让其它球随机发射炮弹
+        if (!this.is_me && this.spent_time > 3 && Math.random() < 1 / 180.0) {
+            let player = this.playground.players[Math.floor(Math.random() * this.playground.players.length)];//随机向某个player射击
+            let tx = player.x + player.speed * this.vx * this.timedelta / 1000 * 0.4;//预判0.4s后的位置
+            let ty = player.y + player.speed * this.vy * this.timedelta / 1000 * 0.4;
+            this.shoot_fireball(tx, ty);//对预判位置射击
+        }
+        if (this.damage_speed > this.eps) {
+            //停止原来的路线，vx和vy和剩余路径长度move_length初始化为0
             this.vx = this.vy = 0;
+            this.move_length = 0;
+            this.x += this.damage_x * this.damage_speed * this.timedelta / 1000;
+            this.y += this.damage_y * this.damage_speed * this.timedelta / 1000;
+            this.damage_speed *= this.friction;
         } else {
-            //timedelta是毫秒，除以1000换成秒
-            let moved = Math.min(this.move_length, this.speed * this.timedelta / 1000);
-            this.x += this.vx * moved;
-            this.y += this.vy * moved;
-            this.move_length -= moved;
+            if (this.move_length < this.eps) {
+                this.move_length = 0;
+                this.vx = this.vy = 0;
+                if (!this.is_me) {
+                    let tx = Math.random() * this.playground.width;
+                    let ty = Math.random() * this.playground.height;
+                    this.move_to(tx, ty);
+                }
+            } else {
+                //timedelta是毫秒，除以1000换成秒
+                let moved = Math.min(this.move_length, this.speed * this.timedelta / 1000);
+                this.x += this.vx * moved;
+                this.y += this.vy * moved;
+                this.move_length -= moved;
+            }
         }
         this.render();
     }
@@ -249,13 +348,21 @@ class Player extends PubgGameObject {
         this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
         this.ctx.fillStyle = this.color;
         this.ctx.fill();
+    }
 
+    //player死去后要pop掉
+    on_destroy() {
+        for (let i = 0; i < this.playground.players.length; i ++) {
+            if (this.playground.players[i] == this) {
+                this.playground.players.splice(i, 1);
+            }
+        }
     }
 
 }
 
 class FireBall extends PubgGameObject {
-    constructor(playground, player, x, y, radius, vx, vy, color, speed, move_length){
+    constructor(playground, player, x, y, radius, vx, vy, color, speed, move_length, damage){
         super();
         this.playground =playground;
         this.player = player;
@@ -268,8 +375,10 @@ class FireBall extends PubgGameObject {
         this.color = color;
         this.speed = speed;
         this.move_length = move_length;
+        this.damage = damage;
         this.eps = 0.1;
     }
+
 
 
     start(){
@@ -287,7 +396,36 @@ class FireBall extends PubgGameObject {
         this.y += this.vy * moved;
         this.move_length -= moved;
 
+        //判断攻击有没有触碰到球体
+        for (let i = 0; i < this.playground.players.length; i ++) {
+            let player = this.playground.players[i];
+            if (this.player !== player && this.is_collision(player)) {
+                this.attack(player);
+            }
+        }
+
         this.render();
+    }
+    get_dist(x1, y1, x2, y2){
+        let dx = x1 - x2;
+        let dy = y1 - y2;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    //判断球和攻击（火球等）是否碰撞
+    is_collision(player) {
+        let distance = this.get_dist(this.x, this.y, player.x, player.y);
+        if (distance < this.radius + player.radius)
+            return true;
+        return false;
+    }
+
+    attack(player) {
+        let angle = Math.atan2(player.y - this.y, player.x - this.x);
+        player.is_attacked(angle, this.damage);
+
+        this.destroy();
+
     }
 
     render() {
@@ -313,9 +451,20 @@ class PubgGamePlayground {
         this.height = this.$playground.height();
         this.game_map = new TheGameMap(this);
         this.players = [];
-        this.players.push(new Player(this, this.width / 2, this.height / 2, this.height * 0.05, "white", this.height * 0.25, true));
+        this.players.push(new Player(this, this.width / 2, this.height / 2, this.height * 0.05, "orange", this.height * 0.15, true));
+
+        for (let i = 0; i < 5; i ++){
+            this.players.push(new Player(this, this.width / 2, this.height / 2, this.height * 0.05, this.get_random_color(), this.height * 0.15, false));
+        }
+
 
         this.start();
+    }
+
+    //随机分配小球颜色
+    get_random_color() {
+        let colors = ["blue", "red", "green", "white", "grey"];
+        return colors[Math.floor(Math.random() * 5)];//下取整
     }
 
     start() {
