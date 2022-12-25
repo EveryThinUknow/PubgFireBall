@@ -18,6 +18,7 @@ class PubgGameMenu {
     </div>
 </div>
 `);
+        this.$menu.hide();
         this.root.$game.append(this.$menu);
         this.$single_mode = this.$menu.find('.pubg-game-menu-field-item-single-mode');
         this.$multi_mode = this.$menu.find('.pubg-game-menu-field-item-multi-mode');
