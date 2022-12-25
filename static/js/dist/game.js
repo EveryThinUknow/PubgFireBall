@@ -205,6 +205,10 @@ class Player extends PubgGameObject {
         this.eps = 0.1;
         this.spent_time = 0;
 
+        if (this.is_me) {
+            this.img = new Image();
+            this.img.src = this.playground.root.settings.photo;
+        }
         this.cur_skill = null;
     }
 
@@ -346,10 +350,21 @@ class Player extends PubgGameObject {
     }
 
     render() {
-        this.ctx.beginPath();
-        this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-        this.ctx.fillStyle = this.color;
-        this.ctx.fill();
+        //把图片切割成圆形作为头像
+        if (this.is_me){
+            this.ctx.save();
+            this.ctx.beginPath();
+            this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            this.ctx.stroke();
+            this.ctx.clip();
+            this.ctx.drawImage(this.img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); 
+            this.ctx.restore();
+        } else {
+            this.ctx.beginPath();
+            this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            this.ctx.fillStyle = this.color;
+            this.ctx.fill();
+        }
     }
 
     //player死去后要pop掉
@@ -488,17 +503,38 @@ class PubgGameSettings {
         this.platform = "WEB";
         //如果数据是从app端传过来的，那么会有一个名为AppOS的参数，则platform=acapp
         if (this.root.AppOS) this.platform = "ACAPP";
+        this.username = "";
+        this.photo = "";
 
+        //绘制登录界面UI
+        this.$settings = $(`
+<div class = "pubg-game-settings">
+    <div class = "pubg-game-settings-login">
+        <div class = "pubg-game-settings-title">
+            登录账号
+        </div>
+    </div>
+    <div class = "pubg-game-settings-register">
+    </div>
+</div>
+`);
+        this.$login = this.$settings.find(".pubg-game-settings-login");
+        this.$login.hide();
+        this.$register = this.$settings.find(".pubg-game-settings-register");
+        this.$register.hide();
+        this.root.$game.append(this.$settings);
         this.start();
     }
 
 //打开注册界面
     register() {
-    
+        this.$login.hide();
+        this.$register.show();
     }
 
     login() {
-    
+        this.$register.hide();
+        this.$login.show();
     }
 
 
@@ -514,9 +550,12 @@ class PubgGameSettings {
             success: function(resp) {
                 console.log(resp);
                 if (resp.result == "success") {
+                    outer.username = resp.username;
+                    outer.photo = resp.photo;
                     outer.hide();
                     outer.root.menu.show();
                 } else{
+                    //没有登录，执行login函数，login函数会打开登录界面
                     outer.login();
                 }
             }
@@ -528,11 +567,11 @@ class PubgGameSettings {
     }
 
     hide() {
-    
+        this.$settings.hide();
     }
 
     show() {
-    
+        this.$settings.show();
     }
 
 }
