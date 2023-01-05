@@ -12,8 +12,8 @@ class PubgGameMenu {
             多人模式
         </div>
         <br>
-        <div class="pubg-game-menu-field-item pubg-game-menu-field-item-settings-mode">
-            设置
+        <div class="pubg-game-menu-field-item pubg-game-menu-field-item-settings">
+            退出游戏
         </div>
     </div>
 </div>
@@ -22,7 +22,7 @@ class PubgGameMenu {
         this.root.$game.append(this.$menu);
         this.$single_mode = this.$menu.find('.pubg-game-menu-field-item-single-mode');
         this.$multi_mode = this.$menu.find('.pubg-game-menu-field-item-multi-mode');
-        this.$settings_mode = this.$menu.find('.pubg-game-menu-field-item-settings-mode');
+        this.$settings = this.$menu.find('.pubg-game-menu-field-item-settings');
 
         this.start();
     }
@@ -42,8 +42,9 @@ class PubgGameMenu {
 
         });
 
-        this.$settings_mode.click(function(){
-
+        this.$settings.click(function(){
+            console.log("click settings");
+            outer.root.settings.logout_on_remote();
         });
     }
 
