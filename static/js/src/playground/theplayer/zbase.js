@@ -18,7 +18,7 @@ class Player extends PubgGameObject {
         this.color = color;
         this.speed = speed;
         this.is_me = is_me;
-        this.eps = 0.1;
+        this.eps = 0.01;
         this.spent_time = 0;
 
         if (this.is_me) {
@@ -32,8 +32,8 @@ class Player extends PubgGameObject {
         if (this.is_me){
             this.add_listening_events();
         } else {
-            let tx = Math.random() * this.playground.width;
-            let ty = Math.random() * this.playground.height;
+            let tx = Math.random() * this.playground.width / this.playground.scale;
+            let ty = Math.random() * this.playground.height / this.playground.scale;
             this.move_to(tx, ty);
         }
     }
@@ -50,10 +50,10 @@ class Player extends PubgGameObject {
             const rect = outer.ctx.canvas.getBoundingClientRect();
             //鼠标右键是3，左键是1，滚轮是2
             if (e.which == 3) {
-                outer.move_to(e.clientX - rect.left, e.clientY - rect.top);
+                outer.move_to((e.clientX - rect.left) / outer.playground.scale, (e.clientY - rect.top) / outer.playground.scale);
             } else if (e.which == 1) {
                 if (outer.cur_skill == "fireball"){
-                    outer.shoot_fireball(e.clientX - rect.left, e.clientY - rect.top);
+                    outer.shoot_fireball((e.clientX - rect.left) / outer.playground.scale, (e.clientY - rect.top) / outer.playground.scale);
                 }
                 //释放技能后，技能状态要恢复初始状态
                 outer.cur_skill = null;
@@ -75,14 +75,14 @@ class Player extends PubgGameObject {
     shoot_fireball(tx, ty){
         let x = this.x;
         let y = this.y;
-        let radius = this.playground.height * 0.01;
+        let radius = 0.01;
         let angle = Math.atan2(ty - this.y, tx - this.x);
         let vx = Math.cos(angle);
         let vy = Math.sin(angle);
         let color = "orange";
-        let speed = this.playground.height * 0.35;
-        let move_length = this.playground.height * 1; //射程
-        let damage = this.playground.height * 0.01; //球半径是h*0.05，攻击一次球变小
+        let speed = 0.35;
+        let move_length = 1; //射程
+        let damage = 0.01; //球半径是h*0.05 / scale,由于scale = this.height，所以damage = 0.01，攻击一次球变小
         new FireBall(this.playground, this, x, y, radius, vx, vy, color, speed, move_length, damage);
 
     }
@@ -104,7 +104,6 @@ class Player extends PubgGameObject {
 
     //player的球体被击中
     is_attacked(angle, damage) {
-        this.radius -= damage;//被攻击后球变小
         //释放烟花particle
         for (let i = 0; i < 20 + Math.random() * 5; i ++) {
              let x = this.x, y = this.y;
@@ -116,8 +115,9 @@ class Player extends PubgGameObject {
              let move_length = this.radius * Math.random() * 5;
              new Particle (this.playground, x, y, radius, vx, vy, color, speed, move_length);
          }
-        //当球的半径小于10像素时
-        if (this.radius < 10) {
+        this.radius -= damage;//被攻击后球变小
+        //当球的半径小于eps像素时
+        if (this.radius < this.eps) {
             this.destroy();
             return false;
         }
@@ -129,7 +129,7 @@ class Player extends PubgGameObject {
 
 
     //////////////////////////////////
-    update() {
+    update_move() {//更新玩家的移动
         this.spent_time += this.timedelta / 1000;//冷静期，经过一定时间后，spent_time大于该时间，才能发射小球，不然一开始玩家就死了
         //让其它球随机发射炮弹
         if (!this.is_me && this.spent_time > 3 && Math.random() < 1 / 180.0) {
@@ -150,8 +150,8 @@ class Player extends PubgGameObject {
                 this.move_length = 0;
                 this.vx = this.vy = 0;
                 if (!this.is_me) {
-                    let tx = Math.random() * this.playground.width;
-                    let ty = Math.random() * this.playground.height;
+                    let tx = Math.random() * this.playground.width / this.playground.scale;
+                    let ty = Math.random() * this.playground.height/ this.playground.scale;
                     this.move_to(tx, ty);
                 }
             } else {
@@ -162,22 +162,27 @@ class Player extends PubgGameObject {
                 this.move_length -= moved;
             }
         }
+    }
+
+    update() {
+        this.update_move();//玩家移动
         this.render();
     }
 
     render() {
+        let scale = this.playground.scale;//定义成绝对值，每台电脑的窗口大小不一样，用绝对像素来生成击中效果
         //把图片切割成圆形作为头像
         if (this.is_me){
             this.ctx.save();
             this.ctx.beginPath();
-            this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            this.ctx.arc(this.x * scale, this.y * scale, this.radius * scale, 0, Math.PI * 2, false);
             this.ctx.stroke();
             this.ctx.clip();
-            this.ctx.drawImage(this.img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); 
+            this.ctx.drawImage(this.img, (this.x - this.radius) * scale, (this.y - this.radius) * scale, this.radius * 2 * scale, this.radius * 2 * scale);
             this.ctx.restore();
         } else {
             this.ctx.beginPath();
-            this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            this.ctx.arc(this.x * scale, this.y * scale, this.radius * scale, 0, Math.PI * 2, false);
             this.ctx.fillStyle = this.color;
             this.ctx.fill();
         }
