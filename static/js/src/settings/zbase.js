@@ -12,7 +12,7 @@ class PubgGameSettings {
 <div class = "pubg-game-settings">
     <div class = "pubg-game-settings-login">
         <div class = "pubg-game-settings-title">
-            登录账号
+            登录
         </div>
         <div class = "pubg-game-settings-username">
             <div class = "pubg-game-settings-item">
@@ -93,7 +93,16 @@ class PubgGameSettings {
         this.start();
     }
 
-    //绑定监听函数
+    //判断是从acwing平台登入的app端口，还是网页端登录
+    start() {
+        if (this.platform === "ACAPP") {
+            this.getinfo_acapp();
+        } else {
+            this.getinfo_web();
+            this.add_listening_events();
+        }
+    }
+   //绑定监听函数
     add_listening_events() {
         this.add_listening_events_login();
         this.add_listening_events_register();
@@ -125,6 +134,8 @@ class PubgGameSettings {
         });
     }
 
+
+
     //远程服务器登录
     login_on_remote() {
         let outer = this;
@@ -134,7 +145,7 @@ class PubgGameSettings {
         this.$login_error_message.empty();
 
         $.ajax({
-            url: "http://121.4.44.128:8000/settings/login/",
+            url: "https://app4260.acapp.acwing.com.cn/settings/login/",
             type: "GET",
             data: {
                 username: username,
@@ -163,7 +174,7 @@ class PubgGameSettings {
         this.$register_error_message.empty();
 
         $.ajax({
-            url: "http://121.4.44.128:8000/settings/register/",
+            url: "https://app4260.acapp.acwing.com.cn/settings/register/",
             type: "GET",
             data: {
                 username: username,
@@ -187,20 +198,23 @@ class PubgGameSettings {
     //远程服务器登出
     logout_on_remote() {
         //若是在app分享平台网站登录，则可以直接关闭窗口退出，不需要点击退出按钮
-        if(this.platform == "ACAPP") return false;
-
-        $.ajax({
-            url: "http://121.4.44.128:8000/settings/logout/",
-            type: "GET",
-            success: function(resp) {
-                console.log(resp);
-                if (resp.result == "success") {
-                    location.reload();
+        if(this.platform == "ACAPP") {
+            this.root.AppOS.api.window.close();
+        } else {
+            $.ajax({
+                url: "https://app4260.acapp.acwing.com.cn/settings/logout/",
+                type: "GET",
+                success: function(resp) {
+                    console.log(resp);
+                    if (resp.result == "success") {
+                        location.reload();
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
+///////////////////////////////////
 
     //打开注册界面
     register() {
@@ -214,11 +228,39 @@ class PubgGameSettings {
         this.$login.show();
     }
 
+    acapp_login(appid, redirect_uri, scope, state) {
+        let outer = this;
 
-    getinfo() {
+        this.root.AppOS.api.oauth2.authorize(appid, redirect_uri, scope, state, function(resp) {
+            if (resp.result === "success") {
+                outer.username = resp.username;
+                outer.photo = resp.photo;
+                outer.hide();
+                outer.root.menu.show();
+            }
+        });
+    }
+/////////////////////////////////
+
+//从acwing的app共享平台登录，用getinfo_acapp
+    getinfo_acapp() {
         let outer = this;
         $.ajax({
-            url: "http://121.4.44.128:8000/settings/getinfo/",
+            url: "https://app4260.acapp.acwing.com.cn/settings/acwing/pubgapp/apply_code/",
+            type: "GET",
+            success: function(resp) {
+                if (resp.result === "success") {
+                    outer.acapp_login(resp.appid, resp.redirect_uri, resp.scope, resp.state);
+                }
+            }
+        });
+    }
+
+//从web浏览器登录，用getinfo_web
+    getinfo_web() {
+        let outer = this;
+        $.ajax({
+            url: "https://app4260.acapp.acwing.com.cn/settings/getinfo/",
             type: "GET",
             data: {
                 platform: outer.platform,
@@ -233,17 +275,12 @@ class PubgGameSettings {
                     outer.root.menu.show();
                 } else{
                     //没有登录，执行login函数，login函数会打开登录界面
-                    outer.register();
+                    outer.login();
                 }
             }
         });
     }
 
-//启动时执行的函数
-    start() {
-        this.getinfo();
-        this.add_listening_events();
-    }
 
     hide() {
         this.$settings.hide();

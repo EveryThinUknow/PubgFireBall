@@ -43,12 +43,12 @@ class PubgGamePlayground {
 
     show() {
         this.$playground.show();
-        //调整大小
-        this.resize();
 
         this.width = this.$playground.width();
         this.height = this.$playground.height();
         this.game_map = new TheGameMap(this);
+        //调整大小
+        this.resize();
         this.players = [];
         this.players.push(new Player(this, this.width / 2 / this.scale, 0.5, 0.05, "orange", 0.15, true));
 

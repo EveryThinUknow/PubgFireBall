@@ -14,7 +14,7 @@ class Player extends PubgGameObject {
         this.friction = 0.9; //摩擦力
         /////
         this.move_length = 0;
-        this.radius = radius
+        this.radius = radius;
         this.color = color;
         this.speed = speed;
         this.is_me = is_me;
@@ -99,13 +99,12 @@ class Player extends PubgGameObject {
         let angle = Math.atan2(ty - this.y, tx - this.x);//atan2(y, x),求与x轴的角度
         this.vx = Math.cos(angle);
         this.vy = Math.sin(angle);
-        console.log("move to", tx, ty);
     }
 
     //player的球体被击中
     is_attacked(angle, damage) {
         //释放烟花particle
-        for (let i = 0; i < 20 + Math.random() * 5; i ++) {
+        for (let i = 0; i < 20 + Math.random() * 10; i ++) {
              let x = this.x, y = this.y;
              let radius = this.radius * Math.random() * 0.1; //烟花球是该球半径十分之一大小的0-1倍
              let angle = Math.PI * 2 * Math.random();//轨迹随机角度释放
