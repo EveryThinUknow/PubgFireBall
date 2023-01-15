@@ -18,7 +18,7 @@ class PubgGameMenu {
     </div>
 </div>
 `);
-        this.$menu.hide();
+        this.$menu.hide();//访问时先进入登录或者注册界面，因此先关闭游戏菜单界面
         this.root.$game.append(this.$menu);
         this.$single_mode = this.$menu.find('.pubg-game-menu-field-item-single-mode');
         this.$multi_mode = this.$menu.find('.pubg-game-menu-field-item-multi-mode');
@@ -635,7 +635,8 @@ class PubgGameSettings {
     //判断是从acwing平台登入的app端口，还是网页端登录
     start() {
         if (this.platform === "ACAPP") {
-            this.getinfo_acapp();
+            this.getinfo_web();
+            this.add_listening_events();
         } else {
             this.getinfo_web();
             this.add_listening_events();
@@ -672,7 +673,6 @@ class PubgGameSettings {
             outer.register_on_remote();
         });
     }
-
 
 
     //远程服务器登录
@@ -733,7 +733,6 @@ class PubgGameSettings {
         });
     }
 
-
     //远程服务器登出
     logout_on_remote() {
         //若是在app分享平台网站登录，则可以直接关闭窗口退出，不需要点击退出按钮
@@ -761,7 +760,7 @@ class PubgGameSettings {
         this.$register.show();
     }
 
-//打开登录界面
+    //打开登录界面
     login() {
         this.$register.hide();
         this.$login.show();
@@ -782,23 +781,24 @@ class PubgGameSettings {
 /////////////////////////////////
 
 //从acwing的app共享平台登录，用getinfo_acapp
-    getinfo_acapp() {
-        let outer = this;
-        $.ajax({
-            url: "https://app4260.acapp.acwing.com.cn/settings/acwing/pubgapp/apply_code/",
-            type: "GET",
-            success: function(resp) {
-                if (resp.result === "success") {
-                    outer.acapp_login(resp.appid, resp.redirect_uri, resp.scope, resp.state);
-                }
-            }
-        });
-    }
+    //getinfo_acapp() {
+        //let outer = this;
+        //$.ajax({
+            //url: "https://app4260.acapp.acwing.com.cn/settings/acwing/pubgapp/apply_code/",
+            //type: "GET",
+            //success: function(resp) {
+                //if (resp.result === "success") {
+                    //outer.acapp_login(resp.appid, resp.redirect_uri, resp.scope, resp.state);
+                //}
+            //}
+        //});
+    //}
 
 //从web浏览器登录，用getinfo_web
     getinfo_web() {
         let outer = this;
         $.ajax({
+            //通过urls找到urls.py的路由，再寻找到views里对应的函数，得到返回值
             url: "https://app4260.acapp.acwing.com.cn/settings/getinfo/",
             type: "GET",
             data: {

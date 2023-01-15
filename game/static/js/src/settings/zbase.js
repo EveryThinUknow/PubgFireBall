@@ -96,7 +96,8 @@ class PubgGameSettings {
     //判断是从acwing平台登入的app端口，还是网页端登录
     start() {
         if (this.platform === "ACAPP") {
-            this.getinfo_acapp();
+            this.getinfo_web();
+            this.add_listening_events();
         } else {
             this.getinfo_web();
             this.add_listening_events();
@@ -133,7 +134,6 @@ class PubgGameSettings {
             outer.register_on_remote();
         });
     }
-
 
 
     //远程服务器登录
@@ -194,7 +194,6 @@ class PubgGameSettings {
         });
     }
 
-
     //远程服务器登出
     logout_on_remote() {
         //若是在app分享平台网站登录，则可以直接关闭窗口退出，不需要点击退出按钮
@@ -243,18 +242,18 @@ class PubgGameSettings {
 /////////////////////////////////
 
 //从acwing的app共享平台登录，用getinfo_acapp
-    getinfo_acapp() {
-        let outer = this;
-        $.ajax({
-            url: "https://app4260.acapp.acwing.com.cn/settings/acwing/pubgapp/apply_code/",
-            type: "GET",
-            success: function(resp) {
-                if (resp.result === "success") {
-                    outer.acapp_login(resp.appid, resp.redirect_uri, resp.scope, resp.state);
-                }
-            }
-        });
-    }
+    //getinfo_acapp() {
+        //let outer = this;
+        //$.ajax({
+            //url: "https://app4260.acapp.acwing.com.cn/settings/acwing/pubgapp/apply_code/",
+            //type: "GET",
+            //success: function(resp) {
+                //if (resp.result === "success") {
+                    //outer.acapp_login(resp.appid, resp.redirect_uri, resp.scope, resp.state);
+                //}
+            //}
+        //});
+    //}
 
 //从web浏览器登录，用getinfo_web
     getinfo_web() {

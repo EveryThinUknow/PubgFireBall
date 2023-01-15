@@ -5,6 +5,7 @@ from game.models.player.player import Player
 
 def register(request):
     data = request.GET
+    ## 获取输入的用户名和密码，如果未输入任何字符，则返回空值
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
     password_confirm = data.get("password_confirm", "").strip()

@@ -18,7 +18,7 @@ class PubgGameMenu {
     </div>
 </div>
 `);
-        this.$menu.hide();
+        this.$menu.hide();//访问时先进入登录或者注册界面，因此先关闭游戏菜单界面
         this.root.$game.append(this.$menu);
         this.$single_mode = this.$menu.find('.pubg-game-menu-field-item-single-mode');
         this.$multi_mode = this.$menu.find('.pubg-game-menu-field-item-multi-mode');
