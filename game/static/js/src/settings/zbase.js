@@ -222,7 +222,7 @@ class PubgGameSettings {
         this.$register.show();
     }
 
-//打开登录界面
+    //打开登录界面
     login() {
         this.$register.hide();
         this.$login.show();
@@ -260,6 +260,7 @@ class PubgGameSettings {
     getinfo_web() {
         let outer = this;
         $.ajax({
+            //通过urls找到urls.py的路由，再寻找到views里对应的函数，得到返回值
             url: "https://app4260.acapp.acwing.com.cn/settings/getinfo/",
             type: "GET",
             data: {

@@ -6,6 +6,8 @@ class Player(models.Model):
     user = models.OneToOneField(User, on_delete = models.CASCADE)
     ##用户头像
     photo = models.URLField(max_length = 256, blank = True)
+    ##用于在APP共享平台登录，测试以redis数据库为基础的一键登录功能，该功能可省略
+    #openid = models.CharField(default="", max_length = 50, blank = True, null = True)
 
 
     def __str__(self):

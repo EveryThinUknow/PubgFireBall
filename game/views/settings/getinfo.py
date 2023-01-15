@@ -15,16 +15,16 @@ def getinfo_web(request):
     if not user.is_authenticated:
         return JsonResponse({
             'result': "not login",
-            })
+        })
     else:
-        player = Player.objects.all()[0]
+        player = Player.objects.get(user=user)
         return JsonResponse({
             'result': "success",
             'username': player.user.username,
             'photo': player.photo,
-            })
+        })
 
-#每一个处理client端请求的后端函数，都要有一个参数叫做request
+#每一个处理client端请求的后端函数，都要有一个参数叫做request来判断从哪里登录
 def getinfo(request):
     platform = request.GET.get('platform')
     if platform == "ACAPP":

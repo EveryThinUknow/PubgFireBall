@@ -1,3 +1,4 @@
+//全局数组
 let PUBG_GAME_OBJECTS = [];
 
 class PubgGameObject {
@@ -35,10 +36,10 @@ let PUBG_GAME_ANIMATION = function(timestamp) {
 
     for (let i = 0; i < PUBG_GAME_OBJECTS.length; i ++){
         let obj = PUBG_GAME_OBJECTS[i];
-        if (!obj.has_called_start){
+        if (!obj.has_called_start){ //如果尚未执行start函数，执行一次
             obj.start();
             obj.has_called_start = true;
-        } else {
+        } else { //已经执行过start函数，无需再次执行，直接更新画面
             obj.timedelta = timestamp - last_timestamp;
             obj.update();
         }
@@ -48,7 +49,7 @@ let PUBG_GAME_ANIMATION = function(timestamp) {
     requestAnimationFrame(PUBG_GAME_ANIMATION);
 }
 
-
+//每秒调用60次
 requestAnimationFrame(PUBG_GAME_ANIMATION);
 
 
