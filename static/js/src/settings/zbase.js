@@ -89,6 +89,7 @@ class PubgGameSettings {
         this.$register_login = this.$register.find(".pubg-game-settings-option");
 
         this.$register.hide();
+
         this.root.$game.append(this.$settings);
         this.start();
     }
@@ -96,8 +97,7 @@ class PubgGameSettings {
     //判断是从acwing平台登入的app端口，还是网页端登录
     start() {
         if (this.platform === "ACAPP") {
-            this.getinfo_web();
-            this.add_listening_events();
+            this.getinfo_app();
         } else {
             this.getinfo_web();
             this.add_listening_events();
@@ -227,9 +227,9 @@ class PubgGameSettings {
         this.$login.show();
     }
 
-    acapp_login(appid, redirect_uri, scope, state) {
+//用于app端口一键授权登录（web端不需要，测试功能，可注释掉）
+    app_login(appid, redirect_uri, scope, state) {
         let outer = this;
-
         this.root.AppOS.api.oauth2.authorize(appid, redirect_uri, scope, state, function(resp) {
             if (resp.result === "success") {
                 outer.username = resp.username;
@@ -239,21 +239,20 @@ class PubgGameSettings {
             }
         });
     }
-/////////////////////////////////
 
-//从acwing的app共享平台登录，用getinfo_acapp
-    //getinfo_acapp() {
-        //let outer = this;
-        //$.ajax({
-            //url: "https://app4260.acapp.acwing.com.cn/settings/acwing/pubgapp/apply_code/",
-            //type: "GET",
-            //success: function(resp) {
-                //if (resp.result === "success") {
-                    //outer.acapp_login(resp.appid, resp.redirect_uri, resp.scope, resp.state);
-                //}
-            //}
-        //});
-    //}
+//从acwing的app共享平台登录，用getinfo_acapp（可注释掉）
+    getinfo_app() {
+        let outer = this;
+        $.ajax({
+            url: "https://app4260.acapp.acwing.com.cn/settings/redistest/app/apply_code/",
+            type: "GET",
+            success: function(resp) {
+                if (resp.result === "success") {
+                    outer.app_login(resp.appid, resp.redirect_uri, resp.scope, resp.state);
+                }
+            }
+        });
+    }
 
 //从web浏览器登录，用getinfo_web
     getinfo_web() {
