@@ -9,15 +9,16 @@ class TheGameMap extends PubgGameObject{
         this.playground.$playground.append(this.$canvas);
     }
 
-    start(){
-
+    start() {
+        //canvans始终居中，超出canvas的边界截取掉
+        this.$canvas.focus();
     }
 
     resize() {
         this.ctx.canvas.width = this.playground.width;
         this.ctx.canvas.height = this.playground.height;
 
-        //每次更新时，render，重涂模板
+        //每次更新时，render，重涂模板,防止拖动时闪烁
         this.ctx.fillStyle = "rgba(0, 0, 0, 1)";//完全不透明
         this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
     }

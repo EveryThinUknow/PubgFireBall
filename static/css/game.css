@@ -98,8 +98,6 @@
 
 
 
-
-
 .pubg-game-menu {
     width: 100%;
     height: 100%;
@@ -109,7 +107,7 @@
 }
 
 .pubg-game-menu-field {
-    wideth: 20vw;
+    width: 20vw;
     position: relative;
     top: 36%;
     left: 20%;
@@ -133,10 +131,7 @@
 .pubg-game-menu-field-item:hover {
     transform: scale(1.2);
     transition: 100ms;
-
 }
-
-
 
 
 
@@ -150,6 +145,6 @@
 .pubg-game-playground > canvas {
     position: relative;
     top: 50%;
-    left: 50%；
+    left: 50%;
     transform: translate(-50%, -50%);
 }

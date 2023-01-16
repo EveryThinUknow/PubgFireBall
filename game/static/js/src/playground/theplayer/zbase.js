@@ -14,7 +14,7 @@ class Player extends PubgGameObject {
         this.friction = 0.9; //摩擦力
         /////
         this.move_length = 0;
-        this.radius = radius
+        this.radius = radius;
         this.color = color;
         this.speed = speed;
         this.is_me = is_me;
@@ -129,6 +129,11 @@ class Player extends PubgGameObject {
 
 
     //////////////////////////////////
+    update() {
+        this.update_move();
+        this.render();
+    }
+
     update_move() {//更新玩家的移动
         this.spent_time += this.timedelta / 1000;//冷静期，经过一定时间后，spent_time大于该时间，才能发射小球，不然一开始玩家就死了
         //让其它球随机发射炮弹
@@ -164,10 +169,6 @@ class Player extends PubgGameObject {
         }
     }
 
-    update() {
-        this.update_move();//玩家移动
-        this.render();
-    }
 
     render() {
         let scale = this.playground.scale;//定义成绝对值，每台电脑的窗口大小不一样，用绝对像素来生成击中效果

@@ -11,8 +11,8 @@ class PubgGamePlayground {
 
     //随机分配小球颜色
     get_random_color() {
-        let colors = ["blue", "red", "green", "white", "grey"];
-        return colors[Math.floor(Math.random() * 5)];//下取整
+        let colors = ["blue", "red", "green", "white", "grey", "pink", "yellow"];
+        return colors[Math.floor(Math.random() * 7)];//下取整
     }
 
     start() {
