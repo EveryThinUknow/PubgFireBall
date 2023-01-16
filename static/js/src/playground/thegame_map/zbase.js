@@ -9,7 +9,8 @@ class TheGameMap extends PubgGameObject{
         this.playground.$playground.append(this.$canvas);
     }
 
-    start(){
+    start() {
+        //canvans始终居中，超出canvas的边界截取掉
         this.$canvas.focus();
     }
 

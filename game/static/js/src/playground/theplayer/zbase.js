@@ -1,5 +1,5 @@
 class Player extends PubgGameObject {
-    constructor(playground, x, y, radius, color, speed, is_me){
+    constructor(playground, x, y, radius, color, speed, character, username, photo){
         super();
         this.playground = playground;
         this.ctx = this.playground.game_map.ctx;
@@ -17,19 +17,21 @@ class Player extends PubgGameObject {
         this.radius = radius;
         this.color = color;
         this.speed = speed;
-        this.is_me = is_me;
+        this.character = character;
+        this.username = username;
+        this.photo = photo;
         this.eps = 0.01;
         this.spent_time = 0;
 
-        if (this.is_me) {
+        if (this.character !== "robot") {
             this.img = new Image();
-            this.img.src = this.playground.root.settings.photo;
+            this.img.src = this.photo;
         }
         this.cur_skill = null;
     }
 
     start() {
-        if (this.is_me){
+        if (this.character === "me"){
             this.add_listening_events();
         } else {
             let tx = Math.random() * this.playground.width / this.playground.scale;
@@ -137,7 +139,7 @@ class Player extends PubgGameObject {
     update_move() {//更新玩家的移动
         this.spent_time += this.timedelta / 1000;//冷静期，经过一定时间后，spent_time大于该时间，才能发射小球，不然一开始玩家就死了
         //让其它球随机发射炮弹
-        if (!this.is_me && this.spent_time > 3 && Math.random() < 1 / 180.0) {
+        if (this.character === "robot" && this.spent_time > 3 && Math.random() < 1 / 180.0) {
             let player = this.playground.players[Math.floor(Math.random() * this.playground.players.length)];//随机向某个player射击
             let tx = player.x + player.speed * this.vx * this.timedelta / 1000 * 0.4;//预判0.4s后的位置
             let ty = player.y + player.speed * this.vy * this.timedelta / 1000 * 0.4;
@@ -154,7 +156,7 @@ class Player extends PubgGameObject {
             if (this.move_length < this.eps) {
                 this.move_length = 0;
                 this.vx = this.vy = 0;
-                if (!this.is_me) {
+                if (this.character === "robot") {
                     let tx = Math.random() * this.playground.width / this.playground.scale;
                     let ty = Math.random() * this.playground.height/ this.playground.scale;
                     this.move_to(tx, ty);
@@ -173,7 +175,7 @@ class Player extends PubgGameObject {
     render() {
         let scale = this.playground.scale;//定义成绝对值，每台电脑的窗口大小不一样，用绝对像素来生成击中效果
         //把图片切割成圆形作为头像
-        if (this.is_me){
+        if (this.character !== "robot"){
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.arc(this.x * scale, this.y * scale, this.radius * scale, 0, Math.PI * 2, false);

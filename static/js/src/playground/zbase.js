@@ -41,7 +41,7 @@ class PubgGamePlayground {
     }
 
 
-    show() {
+    show(mode) {
         this.$playground.show();
 
         this.width = this.$playground.width();
@@ -50,10 +50,13 @@ class PubgGamePlayground {
         //调整大小
         this.resize();
         this.players = [];
-        this.players.push(new Player(this, this.width / 2 / this.scale, 0.5, 0.05, "orange", 0.15, true));
-
-        for (let i = 0; i < 5; i ++){
-            this.players.push(new Player(this, this.width / 2 / this.scale, 0.5, 0.05, this.get_random_color(), 0.15, false));
+        this.players.push(new Player(this, this.width / 2 / this.scale, 0.5, 0.05, "orange", 0.15, "me", this.root.settings.username, this.root.settings.photo));
+        
+        if (mode === "single mode") {
+            for (let i = 0; i < 5; i ++){
+                this.players.push(new Player(this, this.width / 2 / this.scale, 0.5, 0.05, this.get_random_color(), 0.15, "robot"));
+            }
+        } else if (mode === "multi mode") {
         }
 
     }
