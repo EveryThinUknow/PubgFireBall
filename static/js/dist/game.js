@@ -67,8 +67,19 @@ class PubgGameObject {
 
         this.has_called_start = false; //是否执行过start函数
         this.timedelta = 0; //当前距离上一帧的时间间隔
+        this.uuid = this.create_uuid(); //生成ID
     }
-
+////////联机模式的用户对象函数/////////
+    //为每一个加进来的玩家create player时，赋予其一个八位长的数字编号ID
+    create_uuid() {
+        let res = "";
+        for (let i = 0; i < 8; i++) {
+            let x = parseInt(Math.floor(Math.random() * 10)); // Math.random = [0,1)
+            res += x;
+        }
+        return res;
+    }
+///////////////////////////////////////
     start(){ //只在第一帧执行
     }
 
@@ -115,6 +126,66 @@ requestAnimationFrame(PUBG_GAME_ANIMATION);
 
 
 
+
+class MultiPlayerSocket {
+    constructor(playground) {
+        this.playground = playground;
+
+        this.ws = new WebSocket("wss://app4260.acapp.acwing.com.cn/wss/multiplayer/");
+
+        this.start();
+    }
+
+    start() {
+        this.receive();
+    }
+
+    //该前端函数接受后端接收到的group信息
+    receive() {
+        let outer = this;
+        this.ws.onmessage = function(e) {
+            //将后端的字典数据类型转换成json给前端
+            let data = JSON.parse(e.data);
+            let uuid = data.uuid;
+            //避免自己接收自己发出去的消息,uuid是收到的data里的id，outer.id是自己的
+            if (uuid === outer.uuid) return false;
+
+            let event = data.event;
+            if (event === "create_player") {
+                //发送到信息包括：所有玩家的id，name，photo
+                outer.receive_create_player(uuid, data.username, data.photo);
+            }
+        };
+    }
+
+    send_create_player(username, photo) {
+        let outer = this;
+        this.ws.send(JSON.stringify({
+            'event': "create_player",
+            'uuid': outer.uuid,
+            'username': username,
+            'photo': photo,
+        }));
+    }
+
+    receive_create_player(uuid, username, photo) {
+        let player = new Player(
+            this.playground,
+            this.playground.width / 2 / this.playground.scale,
+            0.5,
+            0.05,
+            "green",
+            0.15,
+            "enemy",
+            username,
+            photo,
+        );
+
+        player.uuid = uuid;
+        this.playground.players.push(player);
+    }
+
+}
 
 class TheGameMap extends PubgGameObject{
     constructor(playground){
@@ -196,6 +267,9 @@ class Particle extends PubgGameObject {
 
 class Player extends PubgGameObject {
     constructor(playground, x, y, radius, color, speed, character, username, photo){
+
+        console.log(character, username, photo);
+
         super();
         this.playground = playground;
         this.ctx = this.playground.game_map.ctx;
@@ -229,7 +303,7 @@ class Player extends PubgGameObject {
     start() {
         if (this.character === "me"){
             this.add_listening_events();
-        } else {
+        } else if (this.character === "robot") {
             let tx = Math.random() * this.playground.width / this.playground.scale;
             let ty = Math.random() * this.playground.height / this.playground.scale;
             this.move_to(tx, ty);
@@ -519,6 +593,7 @@ class PubgGamePlayground {
 
 
     show(mode) {
+        let outer = this;
         this.$playground.show();
 
         this.width = this.$playground.width();
@@ -534,6 +609,14 @@ class PubgGamePlayground {
                 this.players.push(new Player(this, this.width / 2 / this.scale, 0.5, 0.05, this.get_random_color(), 0.15, "robot"));
             }
         } else if (mode === "multi mode") {
+            this.mps = new MultiPlayerSocket(this);
+            this.mps.uuid = this.players[0].uuid;//本地数据库中，“自己”永远是第一个加到players[]
+
+            //连接asgi成功后触发onopen的function，测试连接是否成功
+            this.mps.ws.onopen = function() {
+                outer.mps.send_create_player(outer.root.settings.username, outer.root.settings.photo);
+            };
+
         }
 
     }

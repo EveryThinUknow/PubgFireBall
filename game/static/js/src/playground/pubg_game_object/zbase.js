@@ -7,8 +7,19 @@ class PubgGameObject {
 
         this.has_called_start = false; //是否执行过start函数
         this.timedelta = 0; //当前距离上一帧的时间间隔
+        this.uuid = this.create_uuid(); //生成ID
     }
-
+////////联机模式的用户对象函数/////////
+    //为每一个加进来的玩家create player时，赋予其一个八位长的数字编号ID
+    create_uuid() {
+        let res = "";
+        for (let i = 0; i < 8; i++) {
+            let x = parseInt(Math.floor(Math.random() * 10)); // Math.random = [0,1)
+            res += x;
+        }
+        return res;
+    }
+///////////////////////////////////////
     start(){ //只在第一帧执行
     }
 
