@@ -26,9 +26,17 @@ class MultiPlayerSocket {
                 //发送到信息包括：所有玩家的id，name，photo
                 outer.receive_create_player(uuid, data.username, data.photo);
             }
+            else if (event === "move_to"){
+                outer.receive_move_to(uuid, data.tx, data.ty);
+            }
+            else if (event === "shoot_fireball") {
+                outer.receive_shoot_fireball(uuid, data.tx, data.ty, data.ball_uuid);
+            }
         };
     }
 
+////////////编写联机函数//////////////
+    //创建玩家函数
     send_create_player(username, photo) {
         let outer = this;
         this.ws.send(JSON.stringify({
@@ -38,7 +46,7 @@ class MultiPlayerSocket {
             'photo': photo,
         }));
     }
-
+    //创建玩家函数
     receive_create_player(uuid, username, photo) {
         let player = new Player(
             this.playground,
@@ -54,6 +62,58 @@ class MultiPlayerSocket {
 
         player.uuid = uuid;
         this.playground.players.push(player);
+    }
+
+    //通过id寻找对应的player，后续同步各项操作需要找到对应的player
+    get_player(uuid) {
+        let players = this.playground.players;
+        for (let i = 0; i < players.length; i++){
+            let player = players[i];
+            if (player.uuid === uuid)
+                return player;
+        }
+        return null;
+    }
+
+    //同步移动函数
+    send_move_to(tx, ty) {
+        let outer = this;
+        this.ws.send(JSON.stringify({
+            'event': "move_to",
+            'uuid': outer.uuid,
+            'tx': tx,
+            'ty': ty,
+        }));
+    }
+
+    //同步移动函数
+    receive_move_to(uuid, tx, ty) {
+        let player = this.get_player(uuid);
+        //如果找到了该player
+        if (player) {
+            player.move_to(tx, ty);
+        }
+    }
+
+    //同步火球函数
+    send_shoot_fireball(tx, ty, ball_uuid){
+        let outer = this;
+        this.ws.send(JSON.stringify({
+            'event': "shoot_fireball",
+            'uuid': outer.uuid,
+            'tx': tx,
+            'ty': ty,
+            'ball_uuid': ball_uuid,
+        }));
+    }
+
+    //同步火球函数
+    receive_shoot_fireball(uuid, tx, ty, ball_uuid) {
+        let player = this.get_player(uuid);
+        if (player) { //如果有该player
+            let fireball = player.shoot_fireball(tx, ty);
+            fireball.uuid = ball_uuid;
+        }
     }
 
 }

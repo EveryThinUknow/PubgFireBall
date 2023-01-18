@@ -15,16 +15,16 @@ class Player extends PubgGameObject {
         this.damage_y = 0;
         this.damage_speed = 0;
         this.friction = 0.9; //摩擦力
-        /////
         this.move_length = 0;
-        this.radius = radius;
-        this.color = color;
-        this.speed = speed;
-        this.character = character;
+        this.radius = radius;//半径
+        this.color = color;//robot的颜色
+        this.speed = speed;//火球和玩家运行的速度
+        this.character = character;//player的类型：玩家，其他玩家，robot
         this.username = username;
         this.photo = photo;
         this.eps = 0.01;
         this.spent_time = 0;
+        this.fireballs = [];//所有players发出的火球
 
         if (this.character !== "robot") {
             this.img = new Image();
@@ -54,11 +54,24 @@ class Player extends PubgGameObject {
         this.playground.game_map.$canvas.mousedown(function(e){
             const rect = outer.ctx.canvas.getBoundingClientRect();
             //鼠标右键是3，左键是1，滚轮是2
-            if (e.which == 3) {
-                outer.move_to((e.clientX - rect.left) / outer.playground.scale, (e.clientY - rect.top) / outer.playground.scale);
-            } else if (e.which == 1) {
-                if (outer.cur_skill == "fireball"){
-                    outer.shoot_fireball((e.clientX - rect.left) / outer.playground.scale, (e.clientY - rect.top) / outer.playground.scale);
+            if (e.which === 3) {
+                let tx = (e.clientX - rect.left) / outer.playground.scale;
+                let ty = (e.clientY - rect.top) / outer.playground.scale;
+                outer.move_to(tx, ty);
+
+                //单机模式跳过，如果是多人模式
+                if(outer.playground.mode === "multi mode") {
+                    outer.playground.mps.send_move_to(tx, ty);//广播自己的移动
+                }
+
+            } else if (e.which === 1) {
+                let tx = (e.clientX - rect.left) / outer.playground.scale;
+                let ty = (e.clientY - rect.top) / outer.playground.scale;
+                if (outer.cur_skill === "fireball"){
+                    let fireball = outer.shoot_fireball(tx, ty);
+                    if(outer.playground.mode === "multi mode") {
+                        outer.playground.mps.send_shoot_fireball(tx, ty, fireball.uuid);
+                    }
                 }
                 //释放技能后，技能状态要恢复初始状态
                 outer.cur_skill = null;
@@ -88,9 +101,23 @@ class Player extends PubgGameObject {
         let speed = 0.35;
         let move_length = 1; //射程
         let damage = 0.01; //球半径是h*0.05 / scale,由于scale = this.height，所以damage = 0.01，攻击一次球变小
-        new FireBall(this.playground, this, x, y, radius, vx, vy, color, speed, move_length, damage);
+        let fireball = new FireBall(this.playground, this, x, y, radius, vx, vy, color, speed, move_length, damage);//本player发出的fireball
+        this.fireballs.push(fireball);//将该fireball加到所有的fireball的集合数组中
 
+        return fireball;
     }
+
+    //联机中通过uuid来删除玩家的火球,当击中或者飞行一段距离后执行该函数
+    destroy_fireball(uuid) {
+        for (let i = 0; i < this.fireballs.length; i++) {
+            let fireball = this.fireballs[i];
+            if (fireball.uuid === uuid) {
+                fireball.destroy();
+                break;
+            }
+        }
+    }
+
     //求两点间的距离
     get_dist(x1, y1, x2, y2){
         let dx = x1 - x2;
@@ -199,6 +226,7 @@ class Player extends PubgGameObject {
         for (let i = 0; i < this.playground.players.length; i ++) {
             if (this.playground.players[i] == this) {
                 this.playground.players.splice(i, 1);
+                break;
             }
         }
     }

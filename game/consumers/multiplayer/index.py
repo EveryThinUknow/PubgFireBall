@@ -39,7 +39,7 @@ class MultiPlayer(AsyncWebsocketConsumer):
         print('disconnect')
         await self.channel_layer.group_discard(self.room_name, self.channel_name)
 
-
+####后端创建联机用户到本地
     async def create_player(self, data):
         ##找到当前对局的房间号
         players = cache.get(self.room_name)
@@ -54,17 +54,41 @@ class MultiPlayer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             self.room_name,
             {
-                'type': "group_create_player",
+                'type': "group_send_event",
                 'event': "create_player",
                 'uuid': data['uuid'],
                 'username': data['username'],
                 'photo': data['photo'],
             }
         )
-
+####后端同步联机用户移动
+    async def move_to(self, data):
+        await self.channel_layer.group_send(
+            self.room_name,
+            {
+                'type': "group_send_event",
+                'event': "move_to",
+                'uuid': data['uuid'],
+                'tx': data['tx'],
+                'ty': data['ty'],
+            }
+        )
+####后端同步player的攻击(火球)
+    async def shoot_fireball(self, data):
+        await self.channel_layer.group_send(
+            self.room_name,
+            {
+                'type': "group_send_event",
+                'event': "shoot_fireball",
+                'uuid': data["uuid"],
+                'tx': data['tx'],
+                'ty': data['ty'],
+                'ball_uuid': data['ball_uuid'],
+            }
+        )
 
     ##接收群发消息，群发消息的函数的type名为该函数的名字
-    async def group_create_player(self, data):
+    async def group_send_event(self, data):
         await self.send(text_data = json.dumps(data))
 
 
@@ -73,4 +97,8 @@ class MultiPlayer(AsyncWebsocketConsumer):
         event = data['event']
         if event == "create_player":
             await self.create_player(data)
+        elif event == "move_to":
+            await self.move_to(data)
+        elif event == "shoot_fireball":
+            await self.shoot_fireball(data)
 

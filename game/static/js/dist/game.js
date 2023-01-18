@@ -155,9 +155,17 @@ class MultiPlayerSocket {
                 //发送到信息包括：所有玩家的id，name，photo
                 outer.receive_create_player(uuid, data.username, data.photo);
             }
+            else if (event === "move_to"){
+                outer.receive_move_to(uuid, data.tx, data.ty);
+            }
+            else if (event === "shoot_fireball") {
+                outer.receive_shoot_fireball(uuid, data.tx, data.ty, data.ball_uuid);
+            }
         };
     }
 
+////////////编写联机函数//////////////
+    //创建玩家函数
     send_create_player(username, photo) {
         let outer = this;
         this.ws.send(JSON.stringify({
@@ -167,7 +175,7 @@ class MultiPlayerSocket {
             'photo': photo,
         }));
     }
-
+    //创建玩家函数
     receive_create_player(uuid, username, photo) {
         let player = new Player(
             this.playground,
@@ -183,6 +191,58 @@ class MultiPlayerSocket {
 
         player.uuid = uuid;
         this.playground.players.push(player);
+    }
+
+    //通过id寻找对应的player，后续同步各项操作需要找到对应的player
+    get_player(uuid) {
+        let players = this.playground.players;
+        for (let i = 0; i < players.length; i++){
+            let player = players[i];
+            if (player.uuid === uuid)
+                return player;
+        }
+        return null;
+    }
+
+    //同步移动函数
+    send_move_to(tx, ty) {
+        let outer = this;
+        this.ws.send(JSON.stringify({
+            'event': "move_to",
+            'uuid': outer.uuid,
+            'tx': tx,
+            'ty': ty,
+        }));
+    }
+
+    //同步移动函数
+    receive_move_to(uuid, tx, ty) {
+        let player = this.get_player(uuid);
+        //如果找到了该player
+        if (player) {
+            player.move_to(tx, ty);
+        }
+    }
+
+    //同步火球函数
+    send_shoot_fireball(tx, ty, ball_uuid){
+        let outer = this;
+        this.ws.send(JSON.stringify({
+            'event': "shoot_fireball",
+            'uuid': outer.uuid,
+            'tx': tx,
+            'ty': ty,
+            'ball_uuid': ball_uuid,
+        }));
+    }
+
+    //同步火球函数
+    receive_shoot_fireball(uuid, tx, ty, ball_uuid) {
+        let player = this.get_player(uuid);
+        if (player) { //如果有该player
+            let fireball = player.shoot_fireball(tx, ty);
+            fireball.uuid = ball_uuid;
+        }
     }
 
 }
@@ -282,16 +342,16 @@ class Player extends PubgGameObject {
         this.damage_y = 0;
         this.damage_speed = 0;
         this.friction = 0.9; //摩擦力
-        /////
         this.move_length = 0;
-        this.radius = radius;
-        this.color = color;
-        this.speed = speed;
-        this.character = character;
+        this.radius = radius;//半径
+        this.color = color;//robot的颜色
+        this.speed = speed;//火球和玩家运行的速度
+        this.character = character;//player的类型：玩家，其他玩家，robot
         this.username = username;
         this.photo = photo;
         this.eps = 0.01;
         this.spent_time = 0;
+        this.fireballs = [];//所有players发出的火球
 
         if (this.character !== "robot") {
             this.img = new Image();
@@ -321,11 +381,24 @@ class Player extends PubgGameObject {
         this.playground.game_map.$canvas.mousedown(function(e){
             const rect = outer.ctx.canvas.getBoundingClientRect();
             //鼠标右键是3，左键是1，滚轮是2
-            if (e.which == 3) {
-                outer.move_to((e.clientX - rect.left) / outer.playground.scale, (e.clientY - rect.top) / outer.playground.scale);
-            } else if (e.which == 1) {
-                if (outer.cur_skill == "fireball"){
-                    outer.shoot_fireball((e.clientX - rect.left) / outer.playground.scale, (e.clientY - rect.top) / outer.playground.scale);
+            if (e.which === 3) {
+                let tx = (e.clientX - rect.left) / outer.playground.scale;
+                let ty = (e.clientY - rect.top) / outer.playground.scale;
+                outer.move_to(tx, ty);
+
+                //单机模式跳过，如果是多人模式
+                if(outer.playground.mode === "multi mode") {
+                    outer.playground.mps.send_move_to(tx, ty);//广播自己的移动
+                }
+
+            } else if (e.which === 1) {
+                let tx = (e.clientX - rect.left) / outer.playground.scale;
+                let ty = (e.clientY - rect.top) / outer.playground.scale;
+                if (outer.cur_skill === "fireball"){
+                    let fireball = outer.shoot_fireball(tx, ty);
+                    if(outer.playground.mode === "multi mode") {
+                        outer.playground.mps.send_shoot_fireball(tx, ty, fireball.uuid);
+                    }
                 }
                 //释放技能后，技能状态要恢复初始状态
                 outer.cur_skill = null;
@@ -355,9 +428,23 @@ class Player extends PubgGameObject {
         let speed = 0.35;
         let move_length = 1; //射程
         let damage = 0.01; //球半径是h*0.05 / scale,由于scale = this.height，所以damage = 0.01，攻击一次球变小
-        new FireBall(this.playground, this, x, y, radius, vx, vy, color, speed, move_length, damage);
+        let fireball = new FireBall(this.playground, this, x, y, radius, vx, vy, color, speed, move_length, damage);//本player发出的fireball
+        this.fireballs.push(fireball);//将该fireball加到所有的fireball的集合数组中
 
+        return fireball;
     }
+
+    //联机中通过uuid来删除玩家的火球,当击中或者飞行一段距离后执行该函数
+    destroy_fireball(uuid) {
+        for (let i = 0; i < this.fireballs.length; i++) {
+            let fireball = this.fireballs[i];
+            if (fireball.uuid === uuid) {
+                fireball.destroy();
+                break;
+            }
+        }
+    }
+
     //求两点间的距离
     get_dist(x1, y1, x2, y2){
         let dx = x1 - x2;
@@ -466,6 +553,7 @@ class Player extends PubgGameObject {
         for (let i = 0; i < this.playground.players.length; i ++) {
             if (this.playground.players[i] == this) {
                 this.playground.players.splice(i, 1);
+                break;
             }
         }
     }
@@ -501,22 +589,31 @@ class FireBall extends PubgGameObject {
             return false;
         }
 
+        this.update_move();
+        this.update_attack();
 
+        this.render();
+    }
+
+    update_move() {
         let moved = Math.min(this.move_length, this.speed * this.timedelta / 1000);
         this.x += this.vx * moved;
         this.y += this.vy * moved;
         this.move_length -= moved;
+    }
 
+    update_attack() {
         //判断攻击有没有触碰到球体
         for (let i = 0; i < this.playground.players.length; i ++) {
             let player = this.playground.players[i];
             if (this.player !== player && this.is_collision(player)) {
                 this.attack(player);
+                break;//一攻击就break，只攻击一个player，避免重叠时攻击多个,随游戏设定改变
             }
         }
 
-        this.render();
     }
+
     get_dist(x1, y1, x2, y2){
         let dx = x1 - x2;
         let dy = y1 - y2;
@@ -545,6 +642,16 @@ class FireBall extends PubgGameObject {
         this.ctx.arc(this.x * scale, this.y * scale, this.radius * scale, 0, Math.PI * 2, false);
         this.ctx.fillStyle = this.color;
         this.ctx.fill();
+    }
+
+    on_destroy() {
+        let fireballs = this.player.fireballs;
+        for (let i = 0; i < fireballs.length; i++) {
+            if (fireballs[i] === this) {
+                fireballs.splice(i,1);
+                break;
+            }
+        }
     }
 
 }
@@ -599,8 +706,11 @@ class PubgGamePlayground {
         this.width = this.$playground.width();
         this.height = this.$playground.height();
         this.game_map = new TheGameMap(this);
+        this.mode = mode;
+
         //调整大小
         this.resize();
+
         this.players = [];
         this.players.push(new Player(this, this.width / 2 / this.scale, 0.5, 0.05, "orange", 0.15, "me", this.root.settings.username, this.root.settings.photo));
         
