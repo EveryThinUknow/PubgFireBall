@@ -32,6 +32,9 @@ class MultiPlayerSocket {
             else if (event === "shoot_fireball") {
                 outer.receive_shoot_fireball(uuid, data.tx, data.ty, data.ball_uuid);
             }
+            else if (event === "attack") {
+                outer.receive_attack(uuid, data.attacked_uuid, data.x, data.y, data.angle, data.damage, data.ball_uuid);
+            }
         };
     }
 
@@ -113,6 +116,29 @@ class MultiPlayerSocket {
         if (player) { //如果有该player
             let fireball = player.shoot_fireball(tx, ty);
             fireball.uuid = ball_uuid;
+        }
+    }
+
+    //同步攻击函数
+    send_attack(attacked_uuid, x, y, angle, damage, ball_uuid){
+       let outer = this;
+        this.ws.send(JSON.stringify({
+            'event': "attack",
+            'uuid': outer.uuid,
+            'attacked_uuid': attacked_uuid,
+            'x': x,
+            'y': y,
+            'angle': angle,
+            'damage': damage,
+            'ball_uuid': ball_uuid,
+        }));
+    }
+    //同步攻击函数
+    receive_attack(uuid, attacked_uuid, x, y, angle, damage, ball_uuid){
+        let attacker = this.get_player(uuid);//获取攻击者ID
+        let attacked = this.get_player(attacked_uuid);//获取被攻击者ID
+        if (attacker && attacked){//都存在
+            attacked.receive_attack(x, y, angle, damage, ball_uuid, attacker);
         }
     }
 

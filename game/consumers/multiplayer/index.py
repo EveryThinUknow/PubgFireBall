@@ -5,7 +5,12 @@ from django.core.cache import cache
 
 
 class MultiPlayer(AsyncWebsocketConsumer):
+
     async def connect(self):
+        await self.accept()
+
+####后端创建联机用户到本地
+    async def create_player(self, data):
         self.room_name = None
         ##服务器启动时，创建i个游戏房间，编号为room-数字
         for i in range(1000):
@@ -16,9 +21,6 @@ class MultiPlayer(AsyncWebsocketConsumer):
 
         if not self.room_name:
             return
-
-        await self.accept()
-        print('accept')
 
         ##如果不存在当前的房间号
         if not cache.has_key(self.room_name):
@@ -34,13 +36,6 @@ class MultiPlayer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_add(self.room_name, self.channel_name)
 
-
-    async def disconnect(self, close_code):
-        print('disconnect')
-        await self.channel_layer.group_discard(self.room_name, self.channel_name)
-
-####后端创建联机用户到本地
-    async def create_player(self, data):
         ##找到当前对局的房间号
         players = cache.get(self.room_name)
         players.append({
@@ -61,6 +56,12 @@ class MultiPlayer(AsyncWebsocketConsumer):
                 'photo': data['photo'],
             }
         )
+
+
+    async def disconnect(self, close_code):
+        print('disconnect')
+        await self.channel_layer.group_discard(self.room_name, self.channel_name)
+
 ####后端同步联机用户移动
     async def move_to(self, data):
         await self.channel_layer.group_send(
@@ -73,6 +74,7 @@ class MultiPlayer(AsyncWebsocketConsumer):
                 'ty': data['ty'],
             }
         )
+
 ####后端同步player的攻击(火球)
     async def shoot_fireball(self, data):
         await self.channel_layer.group_send(
@@ -87,7 +89,25 @@ class MultiPlayer(AsyncWebsocketConsumer):
             }
         )
 
-    ##接收群发消息，群发消息的函数的type名为该函数的名字
+####后端同步player被攻击后，攻击的处理，同步坐标
+    async def attack(self, data):
+        await self.channel_layer.group_send(
+            self.room_name,
+            {
+                'type': "group_send_event",
+                'event': "attack",
+                'uuid': data["uuid"],
+                'attacked_uuid': data['attacked_uuid'],
+                'x': data['x'],
+                'y': data['y'],
+                'angle': data['angle'],
+                'damage': data['damage'],
+                'ball_uuid': data['ball_uuid'],
+            }
+        )
+
+
+####接收群发消息，群发消息的函数的type名为该函数的名字
     async def group_send_event(self, data):
         await self.send(text_data = json.dumps(data))
 
@@ -101,4 +121,6 @@ class MultiPlayer(AsyncWebsocketConsumer):
             await self.move_to(data)
         elif event == "shoot_fireball":
             await self.shoot_fireball(data)
+        elif event == "attack":
+            await self.attack(data)
 

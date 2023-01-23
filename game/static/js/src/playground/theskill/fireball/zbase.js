@@ -28,8 +28,10 @@ class FireBall extends PubgGameObject {
         }
 
         this.update_move();
-        this.update_attack();
 
+        if (this.player.character !== "enemy") {
+            this.update_attack();
+        }
         this.render();
     }
 
@@ -69,12 +71,16 @@ class FireBall extends PubgGameObject {
     attack(player) {
         let angle = Math.atan2(player.y - this.y, player.x - this.x);
         player.is_attacked(angle, this.damage);
-
+        //如果是多人模式，需要广播攻击信息给其他玩家
+        if (this.playground.mode === "multi mode") {
+            this.playground.mps.send_attack(player.uuid, player.x, player.y, angle, this.damage, this.uuid);
+        }
+        //攻击完毕，消除这个攻击小球
         this.destroy();
 
     }
 
-    render() {
+    render() {//更新画布
         let scale = this.playground.scale;
         this.ctx.beginPath();
         this.ctx.arc(this.x * scale, this.y * scale, this.radius * scale, 0, Math.PI * 2, false);
@@ -91,6 +97,5 @@ class FireBall extends PubgGameObject {
             }
         }
     }
-
 }
 

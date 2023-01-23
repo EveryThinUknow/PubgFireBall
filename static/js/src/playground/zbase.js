@@ -50,6 +50,12 @@ class PubgGamePlayground {
         this.game_map = new TheGameMap(this);
         this.mode = mode;
 
+        //若是在多人模式下
+        this.player_count = 0;
+        this.room_state = "waiting"; //声明一个state变量，waiting表示房间未满，未开始游戏，所有人不能移动
+        this.room_notice_board = new RoomNoticeBoard(this); //创建判断房间状况的函数
+        
+
         //调整大小
         this.resize();
 

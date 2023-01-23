@@ -30,10 +30,24 @@ class Player extends PubgGameObject {
             this.img = new Image();
             this.img.src = this.photo;
         }
+
+        if (this.character === "me") {
+            this.fireball_breaktime = 3;
+        }
+
         this.cur_skill = null;
     }
 
     start() {
+        //每添加一个游戏对象，player_count +1
+        this.playground.player_count ++;
+        this.playground.room_notice_board.write("Ready Player: " + this.playground.player_count);
+        //多人模式下判断游戏开始
+        if (this.playground.player_count >= 3) {
+            this.playground.room_state = "starting";
+            this.playground.room_notice_board.write("live to the end");
+        }
+
         if (this.character === "me"){
             this.add_listening_events();
         } else if (this.character === "robot") {
@@ -50,8 +64,10 @@ class Player extends PubgGameObject {
         this.playground.game_map.$canvas.on("contextmenu", function(){
             return false;
         });
-        //绑定鼠标点击时间
+        //游戏阶段，绑定各个鼠标点击事件
         this.playground.game_map.$canvas.mousedown(function(e){
+            if (outer.playground.room_state !== "starting")
+                return false;
             const rect = outer.ctx.canvas.getBoundingClientRect();
             //鼠标右键是3，左键是1，滚轮是2
             if (e.which === 3) {
@@ -65,6 +81,10 @@ class Player extends PubgGameObject {
                 }
 
             } else if (e.which === 1) {
+                //只有当技能冷却时间为0，才可以操作技能
+                if (outer.fireball_breaktime > outer.eps)
+                    return false;
+
                 let tx = (e.clientX - rect.left) / outer.playground.scale;
                 let ty = (e.clientY - rect.top) / outer.playground.scale;
                 if (outer.cur_skill === "fireball"){
@@ -79,6 +99,13 @@ class Player extends PubgGameObject {
         });
         //获取键盘指令
         $(window).keydown(function(e) {
+            if (outer.playground.room_state !== "starting")
+                return false;
+
+            //只有当冷却时间为0时，才可发射
+            if (outer.fireball_breaktime > outer.eps)
+                return false;
+
             if (e.which == 81) { //q键
                 outer.cur_skill = "fireball";
                 return false;
@@ -103,6 +130,7 @@ class Player extends PubgGameObject {
         let damage = 0.01; //球半径是h*0.05 / scale,由于scale = this.height，所以damage = 0.01，攻击一次球变小
         let fireball = new FireBall(this.playground, this, x, y, radius, vx, vy, color, speed, move_length, damage);//本player发出的fireball
         this.fireballs.push(fireball);//将该fireball加到所有的fireball的集合数组中
+        this.fireball_breaktime = 3;//释放技能后，刷新冷却时间
 
         return fireball;
     }
@@ -158,10 +186,23 @@ class Player extends PubgGameObject {
         this.damage_speed = damage * 200;
         this.speed *= 0.9;
     }
+    //如果多人模式被攻击，另行操作，需要同步坐标
+    receive_attack(x, y, angle, damage, ball_uuid, attacker){
+        attacker.destroy_fireball(ball_uuid);//删除击中player的炮弹
+        //同步被攻击者的坐标，因为可能有延迟，每个player画面中被攻击者的坐标不一样
+        this.x = x;
+        this.y = y;
+        this.is_attacked(angle, damage);
+    }
 
 
     //////////////////////////////////
     update() {
+        this.spent_time += this.timedelta / 1000;
+        if (this.character === "me" && this.playground.room_state === "starting") {
+            this.update_breaktime();
+        }
+
         this.update_move();
         this.render();
     }
@@ -199,6 +240,12 @@ class Player extends PubgGameObject {
                 this.move_length -= moved;
             }
         }
+    }
+
+    //更新冷却时间
+    update_breaktime() {
+        this.fireball_breaktime -= this.timedelta /1000;
+        this.fireball_breaktime = Math.max(this.fireball_breaktime, 0);
     }
 
 
